@@ -33,7 +33,7 @@ public final class Constants {
   public static RobotType getRobot() {
     if (RobotBase.isReal()) {
       if (robot == RobotType.ROBOT_SIMBOT) { // Invalid robot selected
-        return RobotType.ROBOT_2023C;
+        return RobotType.ROBOT_2024C;
       } else {
         return robot;
       }
@@ -44,8 +44,8 @@ public final class Constants {
 
   // TJG
   public static enum RobotType {
-    ROBOT_2023C, // competition
-    ROBOT_2023P, // practice
+    ROBOT_2024C, // competition
+    ROBOT_2024P, // practice
     ROBOT_SIMBOT // simulation
   }
 
