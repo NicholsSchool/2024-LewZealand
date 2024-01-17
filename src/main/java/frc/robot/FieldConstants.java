@@ -31,6 +31,8 @@ public final class FieldConstants {
 
   public static final Translation2d amplifierTranslation = new Translation2d(1.828, 7.704);
 
+  public static final Translation2d posNote1 = new Translation2d(1.0, 5.0);
+
   /* 2023 sample
   // Dimensions for loading zone and substations, including the tape
   public static final class LoadingZone {
