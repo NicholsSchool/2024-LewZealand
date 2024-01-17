@@ -12,7 +12,7 @@ public interface GyroIO {
   default void updateInputs(GyroIOInputs inputs) {}
 
   @AutoLog
-  public static class GyroIOInputs {
+  class GyroIOInputs {
     public boolean connected = false;
     public double pitchRad = 0.0;
     public double velocityPitchRadPerSec = 0.0;
