@@ -31,6 +31,7 @@ public final class FieldConstants {
 
   public static final Translation2d amplifierTranslation = new Translation2d(1.828, 7.704);
 
+  // this is a list of note positions.
   public static final Translation2d posNote1 = new Translation2d(1.0, 5.0);
 
   /* 2023 sample
