@@ -144,10 +144,10 @@ public class Drive extends SubsystemBase {
     if (gyroInputs.connected) {
       // If the gyro is connected, replace the theta component of the twist
       // with the change in angle since the last loop cycle.
+      Rotation2d currentGyroRotation = new Rotation2d(gyroInputs.yawRad);
       twist =
-          new Twist2d(
-              twist.dx, twist.dy, gyroInputs.yawPosition.minus(lastGyroRotation).getRadians());
-      lastGyroRotation = gyroInputs.yawPosition;
+          new Twist2d(twist.dx, twist.dy, currentGyroRotation.minus(lastGyroRotation).getRadians());
+      lastGyroRotation = currentGyroRotation;
     }
     // Apply the twist (change since last loop cycle) to the current pose
     pose = pose.exp(twist);
@@ -162,7 +162,7 @@ public class Drive extends SubsystemBase {
             linearFieldVelocity.getX(),
             linearFieldVelocity.getY(),
             gyroInputs.connected
-                ? gyroInputs.yawVelocityRadPerSec
+                ? gyroInputs.velocityYawRadPerSec
                 : chassisSpeeds.omegaRadiansPerSecond);
   }
 
@@ -267,6 +267,6 @@ public class Drive extends SubsystemBase {
 
   /** Returns the current yaw velocity (Z rotation) in radians per second. TJG */
   public double getYawVelocity() {
-    return gyroInputs.yawVelocityRadPerSec;
+    return gyroInputs.velocityYawRadPerSec;
   }
 }

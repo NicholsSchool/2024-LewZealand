@@ -71,8 +71,8 @@ public class DriveToPose extends Command {
 
   static {
     switch (Constants.getRobot()) {
-      case ROBOT_2023C:
-      case ROBOT_2023P:
+      case ROBOT_2024C:
+      case ROBOT_2024P:
       case ROBOT_SIMBOT:
         driveKp.initDefault(2.0);
         driveKd.initDefault(0.0);
