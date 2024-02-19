@@ -1,16 +1,3 @@
-// Copyright 2021-2023 FRC 6328
-// http://github.com/Mechanical-Advantage
-//
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// version 3 as published by the Free Software Foundation or
-// available in the root directory of this project.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
 package frc.robot;
 
 import com.pathplanner.lib.auto.AutoBuilder;
@@ -18,24 +5,37 @@ import com.pathplanner.lib.auto.NamedCommands;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.GenericHID;
+import edu.wpi.first.wpilibj.PowerDistribution;
+import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import frc.robot.commands.ArmPneumatics;
+import frc.robot.commands.ArmToPos;
 import frc.robot.commands.AutoCommands;
+import frc.robot.commands.ClimbCommands;
 import frc.robot.commands.DriveCommands;
 import frc.robot.commands.DriveToAmplifier;
 import frc.robot.commands.FeedForwardCharacterization;
+import frc.robot.commands.IntakeCommand;
+import frc.robot.commands.ResetFieldOrientation;
+import frc.robot.commands.VoltageCommandRamp;
+import frc.robot.subsystems.arm.Arm;
+import frc.robot.subsystems.arm.ArmIOReal;
+import frc.robot.subsystems.arm.ArmIOSim;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.GyroIO;
-import frc.robot.subsystems.drive.GyroIOPigeon2;
+import frc.robot.subsystems.drive.GyroIONAVX;
 import frc.robot.subsystems.drive.ModuleIO;
+import frc.robot.subsystems.drive.ModuleIOMaxSwerve;
 import frc.robot.subsystems.drive.ModuleIOSim;
-import frc.robot.subsystems.drive.ModuleIOSparkMax;
-import frc.robot.subsystems.flywheel.Flywheel;
-import frc.robot.subsystems.flywheel.FlywheelIO;
-import frc.robot.subsystems.flywheel.FlywheelIOSim;
-import frc.robot.subsystems.flywheel.FlywheelIOSparkMax;
+import frc.robot.subsystems.example_flywheel.ExampleFlywheel;
+import frc.robot.subsystems.example_flywheel.ExampleFlywheelIO;
+import frc.robot.subsystems.example_flywheel.ExampleFlywheelIOSim;
+import frc.robot.subsystems.intake.Intake;
+import frc.robot.subsystems.intake.IntakeIOReal;
+import frc.robot.subsystems.intake.IntakeIOSim;
 import frc.robot.util.AllianceFlipUtil;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 import org.littletonrobotics.junction.networktables.LoggedDashboardNumber;
@@ -49,10 +49,14 @@ import org.littletonrobotics.junction.networktables.LoggedDashboardNumber;
 public class RobotContainer {
   // Subsystems
   private final Drive drive;
-  private final Flywheel flywheel;
+  private final Arm arm;
+  private final Intake intake;
+  private final ExampleFlywheel exampleFlywheel;
+  private final PowerDistribution pdh;
 
   // Controller
-  private final CommandXboxController controller = new CommandXboxController(0);
+  private final CommandXboxController driveController = new CommandXboxController(0);
+  private final CommandXboxController operatorController = new CommandXboxController(1);
 
   // Dashboard inputs
   private final LoggedDashboardChooser<Command> autoChooser;
@@ -64,27 +68,24 @@ public class RobotContainer {
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
-    switch (Constants.currentMode) {
-      case REAL:
+    switch (Constants.getRobot()) {
+      case ROBOT_REAL:
         // Real robot, instantiate hardware IO implementations
         drive =
             new Drive(
-                new GyroIOPigeon2(),
-                new ModuleIOSparkMax(0),
-                new ModuleIOSparkMax(1),
-                new ModuleIOSparkMax(2),
-                new ModuleIOSparkMax(3));
-        flywheel = new Flywheel(new FlywheelIOSparkMax());
-        // drive = new Drive(
-        // new GyroIOPigeon2(),
-        // new ModuleIOTalonFX(0),
-        // new ModuleIOTalonFX(1),
-        // new ModuleIOTalonFX(2),
-        // new ModuleIOTalonFX(3));
-        // flywheel = new Flywheel(new FlywheelIOTalonFX());
+                new GyroIONAVX(),
+                new ModuleIOMaxSwerve(0),
+                new ModuleIOMaxSwerve(1),
+                new ModuleIOMaxSwerve(2),
+                new ModuleIOMaxSwerve(3));
+        // We have no flywheel, so create a simulated just for example.
+        exampleFlywheel = new ExampleFlywheel(new ExampleFlywheelIOSim());
+        pdh = new PowerDistribution(Constants.CAN.kPowerDistributionHub, ModuleType.kRev);
+        arm = new Arm(new ArmIOReal());
+        intake = new Intake(new IntakeIOReal());
         break;
 
-      case SIM:
+      case ROBOT_SIM:
         // Sim robot, instantiate physics sim IO implementations
         drive =
             new Drive(
@@ -93,11 +94,16 @@ public class RobotContainer {
                 new ModuleIOSim(),
                 new ModuleIOSim(),
                 new ModuleIOSim());
-        flywheel = new Flywheel(new FlywheelIOSim());
+        exampleFlywheel = new ExampleFlywheel(new ExampleFlywheelIOSim());
+        pdh = new PowerDistribution();
+        arm = new Arm(new ArmIOSim());
+        intake = new Intake(new IntakeIOSim());
         break;
 
+      case ROBOT_REPLAY:
       default:
-        // Replayed robot, disable IO implementations
+        // Replayed robot, disable IO implementations since the replay
+        // will supply the data.
         drive =
             new Drive(
                 new GyroIO() {},
@@ -105,7 +111,10 @@ public class RobotContainer {
                 new ModuleIO() {},
                 new ModuleIO() {},
                 new ModuleIO() {});
-        flywheel = new Flywheel(new FlywheelIO() {});
+        exampleFlywheel = new ExampleFlywheel(new ExampleFlywheelIO() {});
+        pdh = new PowerDistribution();
+        arm = new Arm(new ArmIOSim()); // TODO: make interfaces
+        intake = new Intake(new IntakeIOSim());
         break;
     }
 
@@ -113,29 +122,27 @@ public class RobotContainer {
     NamedCommands.registerCommand(
         "Run Flywheel",
         Commands.startEnd(
-                () -> flywheel.runVelocity(flywheelSpeedInput.get()), flywheel::stop, flywheel)
+                () -> exampleFlywheel.runVelocity(flywheelSpeedInput.get()),
+                exampleFlywheel::stop,
+                exampleFlywheel)
             .withTimeout(5.0));
     autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
 
     // Create auto commands
     autoCommands = new AutoCommands(drive);
 
-    // Set up feedforward characterization
-    autoChooser.addOption(
-        "Drive FF Characterization",
-        new FeedForwardCharacterization(
-            drive, drive::runCharacterizationVolts, drive::getCharacterizationVelocity));
-    autoChooser.addOption(
-        "Flywheel FF Characterization",
-        new FeedForwardCharacterization(
-            flywheel, flywheel::runVolts, flywheel::getCharacterizationVelocity));
-
     autoChooser.addOption("Score Four", autoCommands.amplifierScoreFour());
+    autoChooser.addOption("auto field test", autoCommands.autoTest());
+    autoChooser.addOption("Drive to note", autoCommands.driveToNote());
+    autoChooser.addOption("drivenote pickup", autoCommands.driveNotePickup());
     autoChooser.addOption(
         "Drive To Amplifier",
         autoCommands.driveToPose(
             AllianceFlipUtil.apply(
                 (new Pose2d(FieldConstants.amplifierTranslation, Rotation2d.fromDegrees(-90.0))))));
+
+    // add testing auto functions
+    addTestingAutos();
 
     // Configure the button bindings
     configureButtonBindings();
@@ -151,26 +158,41 @@ public class RobotContainer {
     drive.setDefaultCommand(
         DriveCommands.joystickDrive(
             drive,
-            () -> -controller.getLeftY(),
-            () -> -controller.getLeftX(),
-            () -> -controller.getRightX()));
-    controller.x().onTrue(Commands.runOnce(drive::stopWithX, drive));
-    controller.y().whileTrue(new DriveToAmplifier(drive).withName("DriveToAmplifier"));
+            () -> -driveController.getLeftY(),
+            () -> -driveController.getLeftX(),
+            () -> -driveController.getRightX()));
+    driveController.back().onTrue(Commands.runOnce(drive::stopWithX, drive));
+    driveController.start().onTrue(new ResetFieldOrientation(drive));
+    driveController
+        .leftTrigger(0.9)
+        .onFalse(
+            DriveCommands.joystickDrive(
+                drive,
+                () -> -driveController.getLeftY() * Constants.DriveConstants.lowGearScaler,
+                () -> -driveController.getLeftX() * Constants.DriveConstants.lowGearScaler,
+                () -> -driveController.getRightX() * Constants.DriveConstants.lowGearScaler));
+    driveController.rightTrigger(0.9).onTrue(new IntakeCommand(arm, intake));
+    driveController.leftBumper().whileTrue(new DriveToAmplifier(drive));
+    // TOOD: add autoalign and nudge to swerve
 
-    controller
-        .b()
+    operatorController.a().onTrue(new ArmToPos(arm, ArmToPos.ArmPos.intakePos));
+    operatorController.b().onTrue(new ArmToPos(arm, ArmToPos.ArmPos.drivePos));
+    operatorController.x().onTrue(new ArmToPos(arm, ArmToPos.ArmPos.trapPos));
+    operatorController.y().onTrue(new ArmToPos(arm, ArmToPos.ArmPos.ampPos));
+    operatorController.back().onTrue(new ArmPneumatics.ArmExtend(arm));
+    operatorController.start().onTrue(new ArmPneumatics.ArmRetract(arm));
+    operatorController
+        .povDown()
+        .onTrue(new ArmToPos(arm, Constants.ArmConstants.kManuelControlMax));
+    operatorController
+        .povUp()
         .onTrue(
-            Commands.runOnce(
-                    () ->
-                        drive.setPose(
-                            new Pose2d(drive.getPose().getTranslation(), new Rotation2d())),
-                    drive)
-                .ignoringDisable(true));
-    controller
-        .a()
-        .whileTrue(
-            Commands.startEnd(
-                () -> flywheel.runVelocity(flywheelSpeedInput.get()), flywheel::stop, flywheel));
+            new ArmToPos(
+                arm, -Constants.ArmConstants.kManuelControlMax)); // TODO: tune these negatives
+    new ClimbCommands.LeftClimb(
+        arm, operatorController.getLeftY() * Constants.ClimbConstants.kMaxClimbSpeed);
+    new ClimbCommands.RightClimb(
+        arm, operatorController.getRightY() * Constants.ClimbConstants.kMaxClimbSpeed);
   }
 
   /**
@@ -180,5 +202,26 @@ public class RobotContainer {
    */
   public Command getAutonomousCommand() {
     return autoChooser.get();
+  }
+
+  private void addTestingAutos() {
+    // Set up feedforward characterization
+    autoChooser.addOption(
+        "Drive FF Characterization",
+        new FeedForwardCharacterization(
+            drive, drive::runCharacterizationVolts, drive::getCharacterizationVelocity));
+    autoChooser.addOption(
+        "Flywheel FF Characterization",
+        new FeedForwardCharacterization(
+            exampleFlywheel,
+            exampleFlywheel::runVolts,
+            exampleFlywheel::getCharacterizationVelocity));
+
+    autoChooser.addOption(
+        "Module Drive Ramp Test",
+        new VoltageCommandRamp(drive, drive::runDriveCommandRampVolts, 0.5, 5.0));
+    autoChooser.addOption(
+        "Module Turn Ramp Test",
+        new VoltageCommandRamp(drive, drive::runTurnCommandRampVolts, 0.5, 5.0));
   }
 }

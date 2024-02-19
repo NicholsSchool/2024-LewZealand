@@ -18,13 +18,10 @@ import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-import edu.wpi.first.math.util.Units;
 import frc.robot.Constants;
 import org.littletonrobotics.junction.Logger;
 
 public class Module {
-  private static final double WHEEL_RADIUS = Units.inchesToMeters(2.0);
-
   private final ModuleIO io;
   private final ModuleIOInputsAutoLogged inputs = new ModuleIOInputsAutoLogged();
   private final int index;
@@ -43,14 +40,25 @@ public class Module {
 
     // Switch constants based on mode (the physics simulator is treated as a
     // separate robot with different tuning)
-    switch (Constants.currentMode) {
-      case REAL:
-      case REPLAY:
-        driveFeedforward = new SimpleMotorFeedforward(0.1, 0.13);
-        driveFeedback = new PIDController(0.05, 0.0, 0.0);
-        turnFeedback = new PIDController(7.0, 0.0, 0.0);
+    switch (Constants.getRobot()) {
+      case ROBOT_REAL:
+      case ROBOT_REPLAY:
+        driveFeedforward =
+            new SimpleMotorFeedforward(
+                Constants.ModuleConstants.kDrivingStaticFF,
+                Constants.ModuleConstants.kDrivingVelocityFF);
+        driveFeedback =
+            new PIDController(
+                Constants.ModuleConstants.kDrivingP,
+                Constants.ModuleConstants.kDrivingI,
+                Constants.ModuleConstants.kDrivingD);
+        turnFeedback =
+            new PIDController(
+                Constants.ModuleConstants.kTurningP,
+                Constants.ModuleConstants.kTurningI,
+                Constants.ModuleConstants.kTurningD);
         break;
-      case SIM:
+      case ROBOT_SIM:
         driveFeedforward = new SimpleMotorFeedforward(0.0, 0.13);
         driveFeedback = new PIDController(0.1, 0.0, 0.0);
         turnFeedback = new PIDController(10.0, 0.0, 0.0);
@@ -92,7 +100,8 @@ public class Module {
         double adjustSpeedSetpoint = speedSetpoint * Math.cos(turnFeedback.getPositionError());
 
         // Run drive controller
-        double velocityRadPerSec = adjustSpeedSetpoint / WHEEL_RADIUS;
+        double velocityRadPerSec =
+            adjustSpeedSetpoint / Constants.ModuleConstants.kWheelRadiusMeters;
         io.setDriveVoltage(
             driveFeedforward.calculate(velocityRadPerSec)
                 + driveFeedback.calculate(inputs.driveVelocityRadPerSec, velocityRadPerSec));
@@ -113,13 +122,33 @@ public class Module {
     return optimizedState;
   }
 
-  /** Runs the module with the specified voltage while controlling to zero degrees. */
+  /** Runs the module drive with the specified voltage while controlling to zero degrees. */
   public void runCharacterization(double volts) {
     // Closed loop turn control
     angleSetpoint = new Rotation2d();
 
     // Open loop drive control
     io.setDriveVoltage(volts);
+    speedSetpoint = null;
+  }
+
+  /** Runs the module drive motor with no turn command. */
+  public void runDriveMotor(double volts) {
+    // No turn command
+    angleSetpoint = null;
+
+    // Open loop drive control
+    io.setDriveVoltage(volts);
+    speedSetpoint = null;
+  }
+
+  /** Runs the module turn motor with the specified voltage with no drive command */
+  public void runTurnMotor(double volts) {
+    // Open loop turn control
+    angleSetpoint = null;
+    io.setTurnVoltage(volts);
+
+    // no drive command.
     speedSetpoint = null;
   }
 
@@ -150,12 +179,12 @@ public class Module {
 
   /** Returns the current drive position of the module in meters. */
   public double getPositionMeters() {
-    return inputs.drivePositionRad * WHEEL_RADIUS;
+    return inputs.drivePositionRad * Constants.ModuleConstants.kWheelRadiusMeters;
   }
 
   /** Returns the current drive velocity of the module in meters per second. */
   public double getVelocityMetersPerSec() {
-    return inputs.driveVelocityRadPerSec * WHEEL_RADIUS;
+    return inputs.driveVelocityRadPerSec * Constants.ModuleConstants.kWheelRadiusMeters;
   }
 
   /** Returns the module position (turn angle and drive position). */

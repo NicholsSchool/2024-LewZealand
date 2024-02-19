@@ -24,7 +24,14 @@ public interface ModuleIO {
     public double driveAppliedVolts = 0.0;
     public double[] driveCurrentAmps = new double[] {};
 
+    // turnAbsolutePosition:
+    // 0rad forward, +pi/2 to left, +pi
+    // 0rad forward, -pi/2 to right, -pi
+    // Used by module at initialization to determine angular
+    // offset.
     public Rotation2d turnAbsolutePosition = new Rotation2d();
+    // turnPosition:
+    // 0rad forward, + cumulative radians to left, - cumulative radians to right.
     public Rotation2d turnPosition = new Rotation2d();
     public double turnVelocityRadPerSec = 0.0;
     public double turnAppliedVolts = 0.0;

@@ -21,6 +21,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj.RobotController;
+import frc.robot.Constants;
 
 /**
  * Module IO implementation for SparkMax drive motor controller, SparkMax turn motor controller (NEO
@@ -36,8 +37,8 @@ import edu.wpi.first.wpilibj.RobotController;
  */
 public class ModuleIOSparkMax implements ModuleIO {
   // Gear ratios for SDS MK4i L2, adjust as necessary
-  private static final double DRIVE_GEAR_RATIO = (50.0 / 14.0) * (17.0 / 27.0) * (45.0 / 15.0);
-  private static final double TURN_GEAR_RATIO = 150.0 / 7.0;
+  private static final double DRIVE_GEAR_RATIO = Constants.ModuleConstants.kDRIVE_GEAR_RATIO;
+  private static final double TURN_GEAR_RATIO = Constants.ModuleConstants.kTURN_GEAR_RATIO;
 
   private final CANSparkMax driveSparkMax;
   private final CANSparkMax turnSparkMax;
@@ -50,28 +51,34 @@ public class ModuleIOSparkMax implements ModuleIO {
   private final Rotation2d absoluteEncoderOffset;
 
   public ModuleIOSparkMax(int index) {
+
+    // ModuleIO flModuleIO,
+    // ModuleIO frModuleIO,
+    // ModuleIO blModuleIO,
+    // ModuleIO brModuleIO
+
     switch (index) {
       case 0:
-        driveSparkMax = new CANSparkMax(1, MotorType.kBrushless);
-        turnSparkMax = new CANSparkMax(2, MotorType.kBrushless);
+        driveSparkMax = new CANSparkMax(24, MotorType.kBrushless);
+        turnSparkMax = new CANSparkMax(23, MotorType.kBrushless);
         turnAbsoluteEncoder = new AnalogInput(0);
         absoluteEncoderOffset = new Rotation2d(0.0); // MUST BE CALIBRATED
         break;
       case 1:
-        driveSparkMax = new CANSparkMax(3, MotorType.kBrushless);
-        turnSparkMax = new CANSparkMax(4, MotorType.kBrushless);
+        driveSparkMax = new CANSparkMax(26, MotorType.kBrushless);
+        turnSparkMax = new CANSparkMax(25, MotorType.kBrushless);
         turnAbsoluteEncoder = new AnalogInput(1);
         absoluteEncoderOffset = new Rotation2d(0.0); // MUST BE CALIBRATED
         break;
       case 2:
-        driveSparkMax = new CANSparkMax(5, MotorType.kBrushless);
-        turnSparkMax = new CANSparkMax(6, MotorType.kBrushless);
+        driveSparkMax = new CANSparkMax(22, MotorType.kBrushless);
+        turnSparkMax = new CANSparkMax(21, MotorType.kBrushless);
         turnAbsoluteEncoder = new AnalogInput(2);
         absoluteEncoderOffset = new Rotation2d(0.0); // MUST BE CALIBRATED
         break;
       case 3:
-        driveSparkMax = new CANSparkMax(7, MotorType.kBrushless);
-        turnSparkMax = new CANSparkMax(8, MotorType.kBrushless);
+        driveSparkMax = new CANSparkMax(28, MotorType.kBrushless);
+        turnSparkMax = new CANSparkMax(27, MotorType.kBrushless);
         turnAbsoluteEncoder = new AnalogInput(3);
         absoluteEncoderOffset = new Rotation2d(0.0); // MUST BE CALIBRATED
         break;

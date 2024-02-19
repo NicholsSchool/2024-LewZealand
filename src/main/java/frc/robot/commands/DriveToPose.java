@@ -71,9 +71,9 @@ public class DriveToPose extends Command {
 
   static {
     switch (Constants.getRobot()) {
-      case ROBOT_2023C:
-      case ROBOT_2023P:
-      case ROBOT_SIMBOT:
+      case ROBOT_REAL:
+      case ROBOT_REPLAY:
+      case ROBOT_SIM:
         driveKp.initDefault(2.0);
         driveKd.initDefault(0.0);
         thetaKp.initDefault(5.0);
@@ -248,7 +248,14 @@ public class DriveToPose extends Command {
     return running && driveController.atGoal() && thetaController.atGoal();
   }
 
-  /** Checks if the robot pose is within the allowed drive and theta tolerances. */
+  /**
+   * Checks if the robot pose is within the allowed drive and theta tolerances.
+   *
+   * <p>//TODO: @tom is this in meters
+   *
+   * @param driveTolerance the finish distance for drive in meters
+   * @param thetaTolerance the angle threashold
+   */
   public boolean withinTolerance(double driveTolerance, Rotation2d thetaTolerance) {
     return running
         && Math.abs(driveErrorAbs) < driveTolerance
@@ -257,6 +264,14 @@ public class DriveToPose extends Command {
 
   /** Returns whether the command is actively running. */
   public boolean isRunning() {
+    return running;
+  }
+
+  public boolean isFinished() {
+    running =
+        this.withinTolerance(
+            Constants.AutoConstants.driveFinishThreshold,
+            new Rotation2d(Constants.AutoConstants.angleFinishThreshold));
     return running;
   }
 }

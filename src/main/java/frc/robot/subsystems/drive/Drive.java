@@ -18,6 +18,7 @@ import com.pathplanner.lib.pathfinding.Pathfinding;
 import com.pathplanner.lib.util.HolonomicPathFollowerConfig;
 import com.pathplanner.lib.util.PathPlannerLogging;
 import com.pathplanner.lib.util.ReplanningConfig;
+import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -26,7 +27,6 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -34,18 +34,20 @@ import frc.robot.Constants; // TJG
 import frc.robot.util.LocalADStarAK;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
+import org.littletonrobotics.junction.networktables.LoggedDashboardNumber;
 
 public class Drive extends SubsystemBase {
-  private static final double MAX_LINEAR_SPEED = Units.feetToMeters(14.5);
-  private static final double TRACK_WIDTH_X = Units.inchesToMeters(25.0);
-  private static final double TRACK_WIDTH_Y = Units.inchesToMeters(25.0);
+  private static final double MAX_LINEAR_SPEED = Constants.DriveConstants.kMAX_LINEAR_SPEED;
+  private static final double TRACK_WIDTH_X = Constants.DriveConstants.kTRACK_WIDTH_X;
+  private static final double TRACK_WIDTH_Y = Constants.DriveConstants.kTRACK_WIDTH_Y;
   private static final double DRIVE_BASE_RADIUS =
       Math.hypot(TRACK_WIDTH_X / 2.0, TRACK_WIDTH_Y / 2.0);
   private static final double MAX_ANGULAR_SPEED = MAX_LINEAR_SPEED / DRIVE_BASE_RADIUS;
 
   private final GyroIO gyroIO;
   private final GyroIOInputsAutoLogged gyroInputs = new GyroIOInputsAutoLogged();
-  private final Module[] modules = new Module[4]; // FL, FR, BL, BR
+  private final int kNumModules = 4;
+  private final Module[] modules = new Module[kNumModules]; // FL, FR, BL, BR
 
   private SwerveDriveKinematics kinematics = new SwerveDriveKinematics(getModuleTranslations());
   private Pose2d pose = new Pose2d();
@@ -53,6 +55,18 @@ public class Drive extends SubsystemBase {
 
   private Twist2d fieldVelocity = new Twist2d(); // TJG
   private ChassisSpeeds setpoint = new ChassisSpeeds(); // TJG
+
+  SwerveModulePosition[] positions =
+      new SwerveModulePosition[] {
+        new SwerveModulePosition(), new SwerveModulePosition(),
+        new SwerveModulePosition(), new SwerveModulePosition()
+      };
+
+  private SwerveDrivePoseEstimator poseEstimator =
+      new SwerveDrivePoseEstimator(kinematics, lastGyroRotation, positions, pose);
+
+  private final LoggedDashboardNumber moduleTestIndex = // drive module to test with voltage ramp
+      new LoggedDashboardNumber("Module Test Index (0-3)", 0);
 
   public Drive(
       GyroIO gyroIO,
@@ -125,18 +139,19 @@ public class Drive extends SubsystemBase {
       Logger.recordOutput("SwerveStates/SetpointsOptimized", optimizedSetpointStates);
     }
 
-    // Log measured states TJG
+    // Log measured states
     SwerveModuleState[] measuredStates = new SwerveModuleState[4];
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < kNumModules; i++) {
       measuredStates[i] = modules[i].getState();
     }
     Logger.recordOutput("SwerveStates/Measured", measuredStates);
 
     // Update odometry
     SwerveModulePosition[] wheelDeltas = new SwerveModulePosition[4];
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < kNumModules; i++) {
       wheelDeltas[i] = modules[i].getPositionDelta();
     }
+
     // The twist represents the motion of the robot since the last
     // loop cycle in x, y, and theta based only on the modules,
     // without the gyro. The gyro is always disconnected in simulation.
@@ -144,15 +159,28 @@ public class Drive extends SubsystemBase {
     if (gyroInputs.connected) {
       // If the gyro is connected, replace the theta component of the twist
       // with the change in angle since the last loop cycle.
+      Rotation2d currentGyroRotation = new Rotation2d(gyroInputs.yawPositionRad);
       twist =
-          new Twist2d(
-              twist.dx, twist.dy, gyroInputs.yawPosition.minus(lastGyroRotation).getRadians());
-      lastGyroRotation = gyroInputs.yawPosition;
+          new Twist2d(twist.dx, twist.dy, currentGyroRotation.minus(lastGyroRotation).getRadians());
+      lastGyroRotation = currentGyroRotation;
+    } else {
+      // no gyro in simulation, faking using odometry twist
+      lastGyroRotation = new Rotation2d(twist.dtheta + lastGyroRotation.getRadians());
     }
-    // Apply the twist (change since last loop cycle) to the current pose
-    pose = pose.exp(twist);
 
-    // Update field velocity TJG
+    SwerveModulePosition[] wheelAbsolutes = new SwerveModulePosition[4];
+    for (int i = 0; i < kNumModules; i++) {
+      wheelAbsolutes[i] = modules[i].getPosition();
+    }
+
+    // updating the pose estimator
+    pose = poseEstimator.update(lastGyroRotation, wheelAbsolutes);
+
+    // Previous method of updating pose:
+    // Apply the twist (change since last loop cycle) to the current pose
+    // pose = pose.exp(twist);
+
+    // Update field velocity
     ChassisSpeeds chassisSpeeds = kinematics.toChassisSpeeds(measuredStates);
     Translation2d linearFieldVelocity =
         new Translation2d(chassisSpeeds.vxMetersPerSecond, chassisSpeeds.vyMetersPerSecond)
@@ -173,8 +201,6 @@ public class Drive extends SubsystemBase {
    */
   public void runVelocity(ChassisSpeeds speeds) {
     setpoint = speeds;
-
-    // TJG
   }
 
   /** Stops the drive. */
@@ -199,6 +225,26 @@ public class Drive extends SubsystemBase {
   public void runCharacterizationVolts(double volts) {
     for (int i = 0; i < 4; i++) {
       modules[i].runCharacterization(volts);
+    }
+  }
+
+  /** Sets voltage ramp command for testing. */
+  public void runDriveCommandRampVolts(double volts) {
+    int moduleIndex = (int) moduleTestIndex.get();
+
+    for (int i = 0; i < 4; i++) {
+      if (i == moduleIndex) modules[moduleIndex].runDriveMotor(volts);
+      else modules[i].stop();
+    }
+  }
+
+  /** Sets voltage ramp command for testing. */
+  public void runTurnCommandRampVolts(double volts) {
+    int moduleIndex = (int) moduleTestIndex.get();
+
+    for (int i = 0; i < 4; i++) {
+      if (i == moduleIndex) modules[moduleIndex].runTurnMotor(volts);
+      else modules[i].stop();
     }
   }
 
@@ -234,7 +280,14 @@ public class Drive extends SubsystemBase {
 
   /** Resets the current odometry pose. */
   public void setPose(Pose2d pose) {
+    // TODO: actually make it offset the pose estimator
+    // poseEstimator.resetPosition(pose.getRotation(), positions, pose);
     this.pose = pose;
+  }
+
+  /** Adds vision data to the pose esimation. */
+  public void addVisionData(Pose2d aprilTagPose, double timestampSecond) {
+    poseEstimator.addVisionMeasurement(aprilTagPose, timestampSecond);
   }
 
   /** Returns the maximum linear speed in meters per sec. */

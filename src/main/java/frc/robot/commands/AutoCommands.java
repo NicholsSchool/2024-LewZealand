@@ -33,6 +33,18 @@ public class AutoCommands {
     return drvToPose.until(drvToPose::atGoal);
   }
 
+  public Command autoTest() {
+    return new AutoFieldTest(drive);
+  }
+
+  public Command driveToNote() {
+    return new DriveToNote(drive);
+  }
+
+  public Command driveNotePickup() {
+    return new DriveNotePickup(drive);
+  }
+
   /** EXAMPLE!!!: Scores three game pieces on field-side (high cone, high cube, mid cube). */
   public Command amplifierScoreFour() {
     /*  return driveToPose(
