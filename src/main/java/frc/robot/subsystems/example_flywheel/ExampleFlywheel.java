@@ -36,6 +36,7 @@ public class ExampleFlywheel extends SubsystemBase {
         ffModel = new SimpleMotorFeedforward(0.1, 0.05);
         io.configurePID(1.0, 0.0, 0.0);
         break;
+      case ROBOT_FOOTBALL:
       case ROBOT_SIM:
         ffModel = new SimpleMotorFeedforward(0.0, 0.03);
         io.configurePID(0.5, 0.0, 0.0);

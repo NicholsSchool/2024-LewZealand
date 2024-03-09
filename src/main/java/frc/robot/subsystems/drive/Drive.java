@@ -18,6 +18,7 @@ import com.pathplanner.lib.pathfinding.Pathfinding;
 import com.pathplanner.lib.util.HolonomicPathFollowerConfig;
 import com.pathplanner.lib.util.PathPlannerLogging;
 import com.pathplanner.lib.util.ReplanningConfig;
+import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -27,6 +28,8 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.math.numbers.N1;
+import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -62,7 +65,7 @@ public class Drive extends SubsystemBase {
         new SwerveModulePosition(), new SwerveModulePosition()
       };
 
-  private SwerveDrivePoseEstimator poseEstimator =
+  public SwerveDrivePoseEstimator poseEstimator =
       new SwerveDrivePoseEstimator(kinematics, lastGyroRotation, positions, pose);
 
   private final LoggedDashboardNumber moduleTestIndex = // drive module to test with voltage ramp
@@ -281,13 +284,17 @@ public class Drive extends SubsystemBase {
   /** Resets the current odometry pose. */
   public void setPose(Pose2d pose) {
     // TODO: actually make it offset the pose estimator
-    // poseEstimator.resetPosition(pose.getRotation(), positions, pose);
+    poseEstimator.resetPosition(pose.getRotation(), positions, pose);
     this.pose = pose;
   }
 
   /** Adds vision data to the pose esimation. */
   public void addVisionData(Pose2d aprilTagPose, double timestampSecond) {
     poseEstimator.addVisionMeasurement(aprilTagPose, timestampSecond);
+  }
+
+  public void addVisionData(Pose2d aprilTagPose, double timestampSecond, Matrix<N3, N1> stdDevs) {
+    poseEstimator.addVisionMeasurement(aprilTagPose, timestampSecond, stdDevs);
   }
 
   /** Returns the maximum linear speed in meters per sec. */
@@ -321,5 +328,9 @@ public class Drive extends SubsystemBase {
   /** Returns the current yaw velocity (Z rotation) in radians per second. TJG */
   public double getYawVelocity() {
     return gyroInputs.yawVelocityRadPerSec;
+  }
+
+  public double getYaw() {
+    return pose.getRotation().getRadians();
   }
 }

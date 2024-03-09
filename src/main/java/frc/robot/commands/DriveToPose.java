@@ -71,6 +71,7 @@ public class DriveToPose extends Command {
 
   static {
     switch (Constants.getRobot()) {
+      case ROBOT_FOOTBALL:
       case ROBOT_REAL:
       case ROBOT_REPLAY:
       case ROBOT_SIM:
@@ -239,8 +240,8 @@ public class DriveToPose extends Command {
   public void end(boolean interrupted) {
     running = false;
     drive.stop();
-    Logger.recordOutput("Odometry/DriveToPoseSetpoint", new double[] {});
-    Logger.recordOutput("Odometry/DriveToPoseGoal", new double[] {});
+    Logger.recordOutput("Odometry/DriveToPoseSetpoint", new Pose2d());
+    Logger.recordOutput("Odometry/DriveToPoseGoal", new Pose2d());
   }
 
   /** Checks if the robot is stopped at the final pose. */

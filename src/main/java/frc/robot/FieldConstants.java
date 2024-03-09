@@ -39,7 +39,7 @@ public final class FieldConstants {
         new Translation2d(Units.inchesToMeters(114.0), Units.inchesToMeters(163.74));
 
     // the 5 center notes are ordered starting with the amp side
-    // https://firstfrc.blob.core.windows.net/frc2024/FieldAssets/2024LayoutMarkingDiagram.pdf
+    // <link>https://firstfrc.blob.core.windows.net/frc2024/FieldAssets/2024LayoutMarkingDiagram.pdf
     // page 6
 
     public static final Translation2d centerNote1 =
