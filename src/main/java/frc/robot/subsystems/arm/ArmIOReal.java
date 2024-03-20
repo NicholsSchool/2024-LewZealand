@@ -34,9 +34,12 @@ public class ArmIOReal implements ArmIO {
     leader.burnFlash();
 
     follower = new CANSparkMax(kArmFollowerCanId, MotorType.kBrushless);
+    follower.setInverted(false);
     follower.restoreFactoryDefaults();
     follower.setIdleMode(IdleMode.kBrake);
-    follower.follow(leader);
+    follower.setSmartCurrentLimit(ARM_CURRENT_LIMIT);
+    // follower.follow(leader);
+    // follower.setControlFramePeriodMs(20);
     follower.burnFlash();
 
     piston = new Solenoid(PneumaticsModuleType.CTREPCM, ARM_SOLENOID_CHANNEL);
@@ -45,17 +48,32 @@ public class ArmIOReal implements ArmIO {
   /** Updates the set of loggable inputs. */
   @Override
   public void updateInputs(ArmIOInputs inputs) {
-    inputs.angleRads = armEncoder.getPosition();
-    inputs.angleDegs = Units.radiansToDegrees(inputs.angleRads);
+    inputs.angleRads = checkRangeRadians(armEncoder.getPosition());
+    inputs.angleDegs = checkRangeDegrees(Units.radiansToDegrees(inputs.angleRads));
     inputs.velocityRadsPerSec = armEncoder.getVelocity();
-    inputs.appliedVolts = leader.getAppliedOutput() * leader.getBusVoltage();
+    inputs.appliedOutput = new double[] {leader.getAppliedOutput(), follower.getAppliedOutput()};
+    inputs.busVoltage = new double[] {leader.getBusVoltage(), follower.getBusVoltage()};
+    inputs.appliedVolts =
+        new double[] {
+          inputs.busVoltage[0] * inputs.appliedOutput[0],
+          inputs.busVoltage[1] * inputs.appliedOutput[1]
+        };
     inputs.currentAmps = new double[] {leader.getOutputCurrent(), follower.getOutputCurrent()};
-    inputs.isExtended = piston.get(); // TODO: check that default is what we think
+    inputs.isExtended = piston.get();
+  }
+
+  private double checkRangeRadians(double angle) {
+    return angle >= Math.toRadians(200.0) ? angle - 2.0 * Math.PI : angle;
+  }
+
+  private double checkRangeDegrees(double angle) {
+    return angle >= 200.0 ? angle - 360.0 : angle;
   }
 
   @Override
   public void setVoltage(double voltage) {
     leader.setVoltage(voltage);
+    follower.setVoltage(voltage);
   }
 
   /** Retracts Pistons */

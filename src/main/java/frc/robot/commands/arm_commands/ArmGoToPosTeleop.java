@@ -1,9 +1,9 @@
 package frc.robot.commands.arm_commands;
 
-import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.arm.Arm;
 
-public class ArmGoToPosTeleop extends InstantCommand {
+public class ArmGoToPosTeleop extends Command {
   private Arm arm;
 
   public ArmGoToPosTeleop(Arm arm) {
@@ -11,9 +11,8 @@ public class ArmGoToPosTeleop extends InstantCommand {
     addRequirements(arm);
   }
 
-  // Called when the command is initially scheduled.
   @Override
-  public void initialize() {
+  public void execute() {
     arm.setGoToPos();
   }
 }

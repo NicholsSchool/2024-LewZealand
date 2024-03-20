@@ -16,12 +16,6 @@ public class Intake extends SubsystemBase {
   private IntakeIO io;
   private final IntakeIOInputsAutoLogged inputs = new IntakeIOInputsAutoLogged();
 
-  private static final LoggedTunableNumber eatVelocityRPM =
-      new LoggedTunableNumber("Intake/EatVelocityRPMs", 600.0);
-  private static final LoggedTunableNumber vomitVelocityRPM =
-      new LoggedTunableNumber("Intake/VomitVelocityRPMs", 900.0); // TODO:negative
-  private static final LoggedTunableNumber digestVelocityRPM =
-      new LoggedTunableNumber("Intake/DigestVelocityRPMs", 300.0); // TODO: fix
   private static final LoggedTunableNumber kP = new LoggedTunableNumber("Intake/kP", 0.1);
   private static final LoggedTunableNumber kI = new LoggedTunableNumber("Intake/kI", 0.5);
 
@@ -35,7 +29,7 @@ public class Intake extends SubsystemBase {
     kStopped,
     kEating,
     kVomiting,
-    kDigesting
+    kPooping
   };
 
   private IntakeMode mode = IntakeMode.kStopped;
@@ -79,13 +73,13 @@ public class Intake extends SubsystemBase {
     } else {
       switch (mode) {
         case kEating:
-          setpointRPMs = eatVelocityRPM.get();
+          setpointRPMs = Constants.IntakeConstants.kEatRPM;
           break;
         case kVomiting:
-          setpointRPMs = vomitVelocityRPM.get();
+          setpointRPMs = Constants.IntakeConstants.kVomitRPM;
           break;
-        case kDigesting:
-          setpointRPMs = digestVelocityRPM.get();
+        case kPooping:
+          setpointRPMs = Constants.IntakeConstants.kPoopRPM;
           break;
         case kStopped:
           setpointRPMs = 0.0;
@@ -115,8 +109,8 @@ public class Intake extends SubsystemBase {
     mode = IntakeMode.kVomiting;
   }
 
-  public void digest() {
-    mode = IntakeMode.kDigesting;
+  public void poop() {
+    mode = IntakeMode.kPooping;
   }
 
   public void stop() {
@@ -165,7 +159,7 @@ public class Intake extends SubsystemBase {
   }
 
   public Command runVomitCommand() {
-    // Run eat until a note is expelled.
+    // Run vomit until a note is expelled.
 
     // run a sequence that runs vomit mode until note is moved off sensor,
     // then keep running motors for a second to keep advancing,
@@ -178,8 +172,17 @@ public class Intake extends SubsystemBase {
         .finallyDo(() -> this.stop());
   }
 
-  public Command runDigestCommand() {
-    // TODO: Update this to push note through
-    return new StartEndCommand(() -> this.digest(), () -> this.stop(), this);
+  public Command runPoopCommand() {
+    // Run eat until a note is expelled.
+
+    // run a sequence that runs poop mode until note is moved off sensor,
+    // then keep running motors for a second to keep advancing,
+    // then stop.
+    return new SequentialCommandGroup(
+            new InstantCommand(() -> System.out.println("Intake: Poop"), this),
+            new RunCommand(() -> this.poop(), this).unless(this::hasNoNote).until(this::hasNoNote),
+            new WaitCommand(IntakeConstants.kVomitDelay) // run a bit more to advance the note
+            )
+        .finallyDo(() -> this.stop());
   }
 }

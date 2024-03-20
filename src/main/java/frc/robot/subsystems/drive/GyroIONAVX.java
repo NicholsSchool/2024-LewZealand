@@ -29,4 +29,10 @@ public class GyroIONAVX implements GyroIO {
     inputs.yawPositionRad = -Math.toRadians(navx.getAngle());
     inputs.yawVelocityRadPerSec = -Math.toRadians(navx.getRate());
   }
+
+  @Override
+  public void resetIMU() {
+    System.out.println("resetting imu");
+    navx.zeroYaw();
+  }
 }

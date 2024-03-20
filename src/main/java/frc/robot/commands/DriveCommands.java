@@ -154,7 +154,7 @@ public class DriveCommands {
     double currentYaw = robotYaw;
     double difference = desiredAngle - Math.toDegrees(currentYaw);
     double error;
-    double kP = 25 * 0.63;
+    double kP = 8.0;
 
     if (Math.abs(difference) > 180) {
       error = difference - (360 * (Math.abs(difference) / difference));

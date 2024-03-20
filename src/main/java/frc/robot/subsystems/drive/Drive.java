@@ -18,8 +18,6 @@ import com.pathplanner.lib.pathfinding.Pathfinding;
 import com.pathplanner.lib.util.HolonomicPathFollowerConfig;
 import com.pathplanner.lib.util.PathPlannerLogging;
 import com.pathplanner.lib.util.ReplanningConfig;
-import edu.wpi.first.math.Matrix;
-import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -28,8 +26,6 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-import edu.wpi.first.math.numbers.N1;
-import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -64,9 +60,6 @@ public class Drive extends SubsystemBase {
         new SwerveModulePosition(), new SwerveModulePosition(),
         new SwerveModulePosition(), new SwerveModulePosition()
       };
-
-  public SwerveDrivePoseEstimator poseEstimator =
-      new SwerveDrivePoseEstimator(kinematics, lastGyroRotation, positions, pose);
 
   private final LoggedDashboardNumber moduleTestIndex = // drive module to test with voltage ramp
       new LoggedDashboardNumber("Module Test Index (0-3)", 0);
@@ -176,12 +169,13 @@ public class Drive extends SubsystemBase {
       wheelAbsolutes[i] = modules[i].getPosition();
     }
 
+    // TODO: put pose estimator back into use
     // updating the pose estimator
-    pose = poseEstimator.update(lastGyroRotation, wheelAbsolutes);
+    // pose = poseEstimator.update(lastGyroRotation, wheelAbsolutes);
 
     // Previous method of updating pose:
     // Apply the twist (change since last loop cycle) to the current pose
-    // pose = pose.exp(twist);
+    pose = pose.exp(twist);
 
     // Update field velocity
     ChassisSpeeds chassisSpeeds = kinematics.toChassisSpeeds(measuredStates);
@@ -277,24 +271,19 @@ public class Drive extends SubsystemBase {
   }
 
   /** Returns the current odometry rotation. */
+  @AutoLogOutput
   public Rotation2d getRotation() {
     return pose.getRotation();
   }
 
   /** Resets the current odometry pose. */
   public void setPose(Pose2d pose) {
-    // TODO: actually make it offset the pose estimator
-    poseEstimator.resetPosition(pose.getRotation(), positions, pose);
+    // TODO: make it actually offset the angle
     this.pose = pose;
   }
 
-  /** Adds vision data to the pose esimation. */
-  public void addVisionData(Pose2d aprilTagPose, double timestampSecond) {
-    poseEstimator.addVisionMeasurement(aprilTagPose, timestampSecond);
-  }
-
-  public void addVisionData(Pose2d aprilTagPose, double timestampSecond, Matrix<N3, N1> stdDevs) {
-    poseEstimator.addVisionMeasurement(aprilTagPose, timestampSecond, stdDevs);
+  public void resetFieldHeading() {
+    gyroIO.resetIMU();
   }
 
   /** Returns the maximum linear speed in meters per sec. */
@@ -330,6 +319,7 @@ public class Drive extends SubsystemBase {
     return gyroInputs.yawVelocityRadPerSec;
   }
 
+  @AutoLogOutput
   public double getYaw() {
     return pose.getRotation().getRadians();
   }

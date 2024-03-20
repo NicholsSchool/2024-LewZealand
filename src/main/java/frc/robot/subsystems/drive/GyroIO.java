@@ -21,4 +21,7 @@ public interface GyroIO {
     public double pitchVelocityRadPerSec = 0.0;
     public double yawVelocityRadPerSec = 0.0; // current yaw velocity, positive turn to left.
   }
+
+  default void resetIMU() {}
+  ;
 }

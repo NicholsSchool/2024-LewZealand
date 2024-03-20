@@ -97,7 +97,7 @@ public final class Constants {
     public static final double kTRACK_WIDTH_X = 0.653;
     public static final double kTRACK_WIDTH_Y = 0.653;
 
-    public static final double lowGearScaler = 0.5;
+    public static final double lowGearScaler = 0.6;
   }
 
   // REV MAXSwerve Modules
@@ -106,7 +106,7 @@ public final class Constants {
     public static final double kWheelRadiusMeters = kWheelDiameterMeters / 2.0;
     public static final double kDrivingMotorFreeSpinRPM = 5676; // NEO 550s max RPM
 
-    public static final double kDrivingP = 0.04;
+    public static final double kDrivingP = 0.02;
     public static final double kDrivingI = 0.0;
     public static final double kDrivingD = 0.0;
     public static final double kDrivingFF = 0.0;
@@ -123,7 +123,7 @@ public final class Constants {
     public static final IdleMode kTurningMotorIdleMode = IdleMode.kBrake;
 
     public static final int kDrivingMotorCurrentLimit = 24; // amps
-    public static final int kTurningMotorCurrentLimit = 12; // amps
+    public static final int kTurningMotorCurrentLimit = 24; // amps
 
     public static final double kDRIVE_GEAR_RATIO = (50.0 / 14.0) * (17.0 / 27.0) * (45.0 / 15.0);
     public static final double kTURN_GEAR_RATIO = 150.0 / 7.0;
@@ -134,15 +134,19 @@ public final class Constants {
     public static final double kVomitDelay = 0.5;
     public static final double kP = 6.0;
     public static final double kI = 0.0;
+    public static final double kEatRPM = 800.0;
+    public static final double kVomitRPM = -1000.0;
+    public static final double kPoopRPM = 1000.0;
   }
 
   public static final class ArmConstants {
-    // TODO: make the correct constants for arm angles
-    public static final double armIntakePosDeg = 0.0;
+    // NO GO TO POSITION ANGLES SHOULD BE OVER 108 DEGREES
+    public static final double armIntakePosDeg = 2.0;
     public static final double armDrivePosDeg = 45.0;
-    public static final double armAmpPosDeg = 90.0;
+    public static final double armAmpPosDeg = 108.0;
     public static final double armTrapPosDeg = 75.0;
 
+    public static final int ARM_LOCK_SOLENOID_CHANNEL = 6;
     public static final int ARM_SOLENOID_CHANNEL = 7;
 
     public static final int ARM_CURRENT_LIMIT = 35;
@@ -162,6 +166,11 @@ public final class Constants {
     public static final double ARM_FF_KV = 1.91;
     public static final double ARM_FF_KA = 0.05;
 
+    public static final double ARM_P = 3.0;
+    public static final double ARM_I = 0.0;
+    public static final double ARM_D = 0.0;
+    public static final double ARM_ACCEL_LIMIT = 0.7;
+    public static final double ARM_VEL_LIMIT = 0.85167;
     // public static final double POSITION_CONVERSION_FACTOR = ARM_GEAR_RATIO * 2.0 * Math.PI;
     // // normalizing based on the theoretical max radians per second of the arm motor
     // public static final double VELOCITY_CONVERSION_FACTOR = POSITION_CONVERSION_FACTOR / 60.0;
