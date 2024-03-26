@@ -12,6 +12,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants;
+import frc.robot.util.CurrentDrawDesparity;
 import frc.robot.util.LoggedTunableNumber;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
@@ -39,6 +40,11 @@ public class Arm extends SubsystemBase {
   private boolean reachedTargetPos = false;
   private boolean targetPosSet = false;
 
+  // tunable booleans
+
+  private static final LoggedTunableNumber currentThreshold =
+      new LoggedTunableNumber("Arm/DesparityThreshold");
+
   // tunable parameters
   private static final LoggedTunableNumber armKg = new LoggedTunableNumber("Arm/kG");
   private static final LoggedTunableNumber armKv = new LoggedTunableNumber("Arm/kV");
@@ -61,19 +67,12 @@ public class Arm extends SubsystemBase {
     kGoToPos,
   };
 
-  private static enum PistonState {
-    kExtended,
-    kRetracted
-  };
-
   private ArmState armState;
-  private PistonState pistonState;
 
   public Arm(ArmIO io) {
     System.out.println("[Init] Creating Arm");
     this.io = io;
     armState = ArmState.kGoToPos;
-    pistonState = PistonState.kRetracted;
 
     reachedTargetPos = false;
     timerMoveToPose = new Timer();
@@ -90,6 +89,7 @@ public class Arm extends SubsystemBase {
     armKi.initDefault(Constants.ArmConstants.ARM_I);
     armKd.initDefault(Constants.ArmConstants.ARM_D);
     moveToPosTimeoutSec.initDefault(5.0);
+    currentThreshold.initDefault(0.25);
 
     armPidController.setP(armKp.get());
     armPidController.setI(armKi.get());
@@ -110,18 +110,15 @@ public class Arm extends SubsystemBase {
     previousVelocity = inputs.velocityRadsPerSec;
 
     // if no target pose has been set yet,
-    // then set as current position. This
-    // is to have arm hold its starting position on enable.
+    // then set to vertical (90 degrees)
+    // so the arm raises on enable
     if (!targetPosSet) {
       targetPosSet = true;
       setTargetPos(90.0);
     }
 
     // Reset when disabled
-    if (DriverStation.isDisabled()) {
-      // manuelInput = 0.0;
-      // armState = ArmState.kManuel;
-    }
+    if (DriverStation.isDisabled()) {}
 
     switch (armState) {
       case kManuel:
@@ -145,15 +142,6 @@ public class Arm extends SubsystemBase {
     }
     voltageCommand = voltageCmdPid + voltageCmdFF;
     io.setVoltage(voltageCommand);
-
-    switch (pistonState) {
-      case kExtended:
-        io.extend();
-        break;
-      case kRetracted:
-        io.retract();
-        break;
-    }
   }
 
   // set soft limits on the input velocity of the arm to make
@@ -206,16 +194,6 @@ public class Arm extends SubsystemBase {
     armState = ArmState.kGoToPos;
   }
 
-  // called from instant command
-  public void setExtended() {
-    pistonState = PistonState.kExtended;
-  }
-
-  // called from instant command
-  public void setRetracted() {
-    pistonState = PistonState.kRetracted;
-  }
-
   private void updateTunables() {
     // Update from tunable numbers
     if (armKg.hasChanged(hashCode())
@@ -223,7 +201,6 @@ public class Arm extends SubsystemBase {
         || armKa.hasChanged(hashCode())) {
       ARM_FF = new ArmFeedforward(0.0, armKg.get(), armKv.get(), armKa.get());
     }
-
     if (armMaxVelocityRad.hasChanged(hashCode())
         || armMaxAccelerationRad.hasChanged(hashCode())
         || positionToleranceDeg.hasChanged(hashCode())
@@ -243,7 +220,6 @@ public class Arm extends SubsystemBase {
 
   // Create command that will move to target angle until motion completes.
   public Command runGoToPosCommand(double targetAngleDeg) {
-    // run eat mode until a note is obtained
     return new FunctionalCommand(
         () -> this.setTargetPos(targetAngleDeg),
         this::setGoToPos,
@@ -252,11 +228,12 @@ public class Arm extends SubsystemBase {
         this);
   }
 
+  // THINGS TO LOG IN ADV SCOPE
+
+  @AutoLogOutput
   public double getAngleDeg() {
     return inputs.angleDegs;
   }
-
-  // THINGS TO LOG IN ADV SCOPE
 
   @AutoLogOutput
   public double getTargetAngleDeg() {
@@ -301,5 +278,11 @@ public class Arm extends SubsystemBase {
   @AutoLogOutput
   public double moveDurationTimeSeconds() {
     return timerMoveToPose.get();
+  }
+
+  @AutoLogOutput
+  public boolean isCurrnetProblem() {
+    return CurrentDrawDesparity.isDesparity(
+        inputs.currentAmps[0], inputs.currentAmps[1], currentThreshold.get());
   }
 }

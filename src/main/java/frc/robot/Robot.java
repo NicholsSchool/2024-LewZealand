@@ -1,16 +1,3 @@
-// Copyright 2021-2023 FRC 6328
-// http://github.com/Mechanical-Advantage
-//
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// version 3 as published by the Free Software Foundation or
-// available in the root directory of this project.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
 package frc.robot;
 
 import edu.wpi.first.cameraserver.CameraServer;
@@ -41,6 +28,7 @@ public class Robot extends LoggedRobot {
   @Override
   public void robotInit() {
     CameraServer.startAutomaticCapture();
+
     // Record metadata
     Logger.recordMetadata("ProjectName", BuildConstants.MAVEN_NAME);
     Logger.recordMetadata("BuildDate", BuildConstants.BUILD_DATE);
@@ -118,7 +106,12 @@ public class Robot extends LoggedRobot {
   /** This autonomous runs the autonomous command selected by your {@link RobotContainer} class. */
   @Override
   public void autonomousInit() {
-    if (Constants.getRobot() == RobotType.ROBOT_REAL) robotContainer.armLock.set(true);
+    robotContainer.setStartingPose();
+
+    if (Constants.getRobot() == RobotType.ROBOT_REAL) {
+      robotContainer.armLock.set(true);
+    }
+
     autonomousCommand = robotContainer.getAutonomousCommand();
 
     // schedule the autonomous command (example)
@@ -134,7 +127,10 @@ public class Robot extends LoggedRobot {
   /** This function is called once when teleop is enabled. */
   @Override
   public void teleopInit() {
-    if (Constants.getRobot() == RobotType.ROBOT_REAL) robotContainer.armLock.set(true);
+    if (Constants.getRobot() == RobotType.ROBOT_REAL) {
+      robotContainer.armLock.set(true);
+    }
+
     // This makes sure that the autonomous stops running when
     // teleop starts running. If you want the autonomous to
     // continue until interrupted by another command, remove

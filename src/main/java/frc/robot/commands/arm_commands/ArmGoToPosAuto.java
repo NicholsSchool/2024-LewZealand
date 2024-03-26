@@ -5,15 +5,18 @@ import frc.robot.subsystems.arm.Arm;
 
 public class ArmGoToPosAuto extends Command {
   private Arm arm;
+  private double targetPos;
 
-  public ArmGoToPosAuto(Arm arm) {
+  public ArmGoToPosAuto(Arm arm, double targetPos) {
     this.arm = arm;
+    this.targetPos = targetPos;
     addRequirements(arm);
   }
 
   // Called when the command is initially scheduled.
   @Override
   public void initialize() {
+    arm.setTargetPos(targetPos);
     arm.setGoToPos();
   }
 

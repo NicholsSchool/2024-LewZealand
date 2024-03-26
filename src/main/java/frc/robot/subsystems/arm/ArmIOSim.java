@@ -46,19 +46,10 @@ public class ArmIOSim implements ArmIO {
     inputs.velocityRadsPerSec = sim.getVelocityRadPerSec();
     inputs.appliedVolts = new double[] {voltage};
     inputs.currentAmps = new double[] {sim.getCurrentDrawAmps(), sim.getCurrentDrawAmps()};
-    inputs.isExtended = false;
   }
 
   @Override
   public void setVoltage(double voltage) {
     this.voltage = voltage;
   }
-
-  /** Retracts Pistons */
-  @Override
-  public void retract() {}
-
-  /** Extends Pistons */
-  @Override
-  public void extend() {}
 }

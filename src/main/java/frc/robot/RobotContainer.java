@@ -1,57 +1,54 @@
 package frc.robot;
 
-import static frc.robot.Constants.ArmConstants.ARM_LOCK_SOLENOID_CHANNEL;
-
 import com.pathplanner.lib.auto.AutoBuilder;
-import com.pathplanner.lib.auto.NamedCommands;
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.networktables.GenericEntry;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
+import edu.wpi.first.wpilibj.PowerDistribution;
+import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.ArmConstants;
+import frc.robot.Constants.RobotConstants;
+import frc.robot.Constants.RobotType;
 import frc.robot.commands.AutoCommands;
 import frc.robot.commands.DriveCommands;
 import frc.robot.commands.DriveToAmplifier;
 import frc.robot.commands.FeedForwardCharacterization;
 import frc.robot.commands.VoltageCommandRamp;
-import frc.robot.commands.arm_commands.ArmExtend;
 import frc.robot.commands.arm_commands.ArmGoToPosTeleop;
 import frc.robot.commands.arm_commands.ArmManuel;
-import frc.robot.commands.arm_commands.ArmRetract;
 import frc.robot.commands.arm_commands.ArmSetTargetPos;
-import frc.robot.commands.climb_commands.ClimbManual;
 import frc.robot.subsystems.arm.Arm;
 import frc.robot.subsystems.arm.ArmIOReal;
 import frc.robot.subsystems.arm.ArmIOSim;
-import frc.robot.subsystems.climb.Climb;
-import frc.robot.subsystems.climb.ClimbIOReal;
-import frc.robot.subsystems.climb.ClimbIOSim;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.GyroIO;
 import frc.robot.subsystems.drive.GyroIONAVX;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOMaxSwerve;
 import frc.robot.subsystems.drive.ModuleIOSim;
-import frc.robot.subsystems.example_flywheel.ExampleFlywheel;
-import frc.robot.subsystems.example_flywheel.ExampleFlywheelIO;
-import frc.robot.subsystems.example_flywheel.ExampleFlywheelIOSim;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.IntakeIOReal;
 import frc.robot.subsystems.intake.IntakeIOSim;
-import frc.robot.subsystems.vision.AprilTagVision;
-import frc.robot.subsystems.vision.AprilTagVisionIO;
-import frc.robot.subsystems.vision.AprilTagVisionReal;
+import frc.robot.subsystems.outtake.Outtake;
+import frc.robot.subsystems.outtake.OuttakeIOReal;
+import frc.robot.subsystems.outtake.OuttakeIOSim;
+import frc.robot.util.AllianceFlipUtil;
+import frc.robot.util.LoggedTunableNumber;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 import org.littletonrobotics.junction.networktables.LoggedDashboardNumber;
 
@@ -66,17 +63,15 @@ public class RobotContainer {
   private final Drive drive;
   private final Arm arm;
   private final Intake intake;
-  private final ExampleFlywheel exampleFlywheel;
-  private final AprilTagVision vision;
-  private final Climb climb;
+  private final Outtake outtake;
 
   public final Solenoid armLock;
+  private PowerDistribution pdh;
 
   // shuffleboard
   ShuffleboardTab lewZealandTab;
   public static GenericEntry hasNote;
-  public static GenericEntry leftClimbHeight;
-  public static GenericEntry rightClimbHeight;
+  public static GenericEntry isCurrnetProblem;
 
   // Controller
   public static CommandXboxController driveController = new CommandXboxController(0);
@@ -84,8 +79,24 @@ public class RobotContainer {
 
   // Dashboard inputs
   private final LoggedDashboardChooser<Command> autoChooser;
-  private final LoggedDashboardNumber flywheelSpeedInput =
-      new LoggedDashboardNumber("Flywheel Speed", 1500.0);
+
+  // Start position selections
+  public static final LoggedTunableNumber startPositionIndex =
+      new LoggedTunableNumber("start pos index: 0 or 1", 0.0);
+  // Start Pos 0: Along line of the Amp.
+  public static final LoggedTunableNumber startX0 =
+      new LoggedTunableNumber(
+          "Start X0(m)", Units.inchesToMeters(RobotConstants.robotSideLengthInches / 2));
+  public static final LoggedTunableNumber startY0 = new LoggedTunableNumber("Start Y0(m)", 7.35);
+  public static final LoggedTunableNumber startTheta0 =
+      new LoggedTunableNumber("Start Theta0(deg)", 0.0);
+  // Start Pos 1: Next to human player side of Speaker.
+  public static final LoggedTunableNumber startX1 =
+      new LoggedTunableNumber(
+          "Start X1(m)", Units.inchesToMeters(RobotConstants.robotSideLengthInches / 2));
+  public static final LoggedTunableNumber startY1 = new LoggedTunableNumber("Start Y1(m)", 4.05);
+  public static final LoggedTunableNumber startTheta1 =
+      new LoggedTunableNumber("Start Theta1(deg)", 0.0);
 
   // Auto Commands
   private final AutoCommands autoCommands;
@@ -94,9 +105,13 @@ public class RobotContainer {
   public RobotContainer() {
     switch (Constants.getRobot()) {
       case ROBOT_REAL:
-        armLock = new Solenoid(PneumaticsModuleType.CTREPCM, ARM_LOCK_SOLENOID_CHANNEL);
-        armLock.set(false);
         // Real robot, instantiate hardware IO implementations
+        pdh = new PowerDistribution(Constants.CAN.kPowerDistributionHub, ModuleType.kRev);
+
+        armLock =
+            new Solenoid(PneumaticsModuleType.CTREPCM, ArmConstants.ARM_LOCK_SOLENOID_CHANNEL);
+        armLock.set(false);
+
         drive =
             new Drive(
                 new GyroIONAVX(),
@@ -104,17 +119,14 @@ public class RobotContainer {
                 new ModuleIOMaxSwerve(1),
                 new ModuleIOMaxSwerve(2),
                 new ModuleIOMaxSwerve(3));
-        // We have no flywheel, so create a simulated just for example.
-        exampleFlywheel = new ExampleFlywheel(new ExampleFlywheelIOSim());
         arm = new Arm(new ArmIOReal());
         intake = new Intake(new IntakeIOReal());
-        vision = new AprilTagVision(new AprilTagVisionIO() {});
-        climb = new Climb(new ClimbIOReal());
+        outtake = new Outtake(new OuttakeIOReal());
         break;
 
       case ROBOT_SIM:
-        armLock = null;
         // Sim robot, instantiate physics sim IO implementations
+        armLock = null;
         drive =
             new Drive(
                 new GyroIO() {},
@@ -122,11 +134,9 @@ public class RobotContainer {
                 new ModuleIOSim(),
                 new ModuleIOSim(),
                 new ModuleIOSim());
-        exampleFlywheel = new ExampleFlywheel(new ExampleFlywheelIOSim());
         arm = new Arm(new ArmIOSim());
         intake = new Intake(new IntakeIOSim());
-        vision = new AprilTagVision(new AprilTagVisionIO() {});
-        climb = new Climb(new ClimbIOSim());
+        outtake = new Outtake(new OuttakeIOSim());
         break;
 
       case ROBOT_FOOTBALL:
@@ -138,22 +148,17 @@ public class RobotContainer {
                 new ModuleIOSim(),
                 new ModuleIOSim(),
                 new ModuleIOSim());
-        exampleFlywheel = new ExampleFlywheel(new ExampleFlywheelIOSim());
         arm = new Arm(new ArmIOSim());
         intake = new Intake(new IntakeIOSim());
-        vision =
-            new AprilTagVision(
-                new AprilTagVisionReal(
-                    Constants.VisionConstants.cameraName, Constants.RobotConstants.cameraToRobot));
-        climb = new Climb(new ClimbIOSim());
-
+        outtake = new Outtake(new OuttakeIOSim());
         break;
 
-        //   case ROBOT_REPLAY:
       default:
-        armLock = null;
+        // case ROBOT_REPLAY:
         // Replayed robot, disable IO implementations since the replay
         // will supply the data.
+        armLock = null;
+
         drive =
             new Drive(
                 new GyroIO() {},
@@ -161,58 +166,100 @@ public class RobotContainer {
                 new ModuleIO() {},
                 new ModuleIO() {},
                 new ModuleIO() {});
-        exampleFlywheel = new ExampleFlywheel(new ExampleFlywheelIO() {});
-        arm = new Arm(new ArmIOSim()); // TODO: make interfaces
+        arm = new Arm(new ArmIOSim());
         intake = new Intake(new IntakeIOSim());
-        vision = new AprilTagVision(new AprilTagVisionIO() {});
-        climb = new Climb(new ClimbIOSim());
-
+        outtake = new Outtake(new OuttakeIOSim());
         break;
     }
 
     // Set up auto routines
-    NamedCommands.registerCommand(
-        "Run Flywheel",
-        Commands.startEnd(
-                () -> exampleFlywheel.runVelocity(flywheelSpeedInput.get()),
-                exampleFlywheel::stop,
-                exampleFlywheel)
-            .withTimeout(5.0));
     autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
 
     // Create auto commands
-    autoCommands = new AutoCommands(drive);
+    autoCommands = new AutoCommands(drive, arm, intake);
 
-    autoChooser.addOption(
-        "Drive forward 2.5 m",
-        autoCommands.driveToPoseRelative(new Pose2d(2.5, 0, new Rotation2d())));
-    autoChooser.addOption("Score Four", autoCommands.amplifierScoreFour());
-    autoChooser.addOption("auto field test", autoCommands.autoTest());
-    autoChooser.addOption("Drive to note", autoCommands.driveToNote());
-    autoChooser.addOption("drivenote pickup", autoCommands.driveNotePickup());
-    autoChooser.addOption("Drive To Amplifier", new DriveToAmplifier(drive));
+    autoChooser.addOption("Wait 5 seconds", new WaitCommand(5.0));
+    autoChooser.addOption("relative blue amp", autoCommands.scoreAmpRelativeBlue());
+    autoChooser.addOption("relative red amp", autoCommands.scoreAmpRelativeRed());
 
     // add testing auto functions
     addTestingAutos();
 
+    // initialize the shuffleboard outputs
+    initShuffleboard();
+
     // Configure the button bindings
     configureButtonBindings();
 
-    initShuffleboard();
+    // set starting position of robot
+    setStartingPose();
   }
 
   private void initShuffleboard() {
     // Configure the Shuffleboard
     lewZealandTab = Shuffleboard.getTab("Lew Zealand");
     hasNote = lewZealandTab.add("Has Note", false).getEntry();
-    leftClimbHeight = lewZealandTab.add("Left Climb", 0.0).getEntry();
-    rightClimbHeight = lewZealandTab.add("Right Climb", 0.0).getEntry();
+    isCurrnetProblem = lewZealandTab.add("Current Problem", false).getEntry();
   }
 
   public void updateShuffleboard() {
     hasNote.setBoolean(intake.hasNote());
-    leftClimbHeight.setDouble(climb.getLeftEncoder());
-    rightClimbHeight.setDouble(climb.getRightEncoder());
+    isCurrnetProblem.setBoolean(!arm.isCurrnetProblem());
+
+    if (Constants.getRobot() == RobotType.ROBOT_REAL) {
+      SmartDashboard.putNumber("PDH/Voltage", pdh.getVoltage());
+      SmartDashboard.putNumber("PDH/Current", pdh.getTotalCurrent());
+      SmartDashboard.putNumber("PDH/Power", pdh.getTotalPower());
+      SmartDashboard.putNumber("PDH/Energy", pdh.getTotalEnergy());
+
+      int numChannels = pdh.getNumChannels();
+      for (int i = 0; i < numChannels; i++) {
+        SmartDashboard.putNumber("PDH/Channel " + i, pdh.getCurrent(i));
+      }
+    }
+
+    resetPosWithDashboard();
+  }
+
+  // changes robot pose with dashboard tunables
+  private void resetPosWithDashboard() {
+
+    // update robot position only if robot is disabled, otherwise
+    // robot could move in unexpected ways.
+    if (DriverStation.isDisabled()) {
+      if (startX0.hasChanged(hashCode())
+          || startY0.hasChanged(hashCode())
+          || startTheta0.hasChanged(hashCode())
+          || startX1.hasChanged(hashCode())
+          || startY1.hasChanged(hashCode())
+          || startTheta1.hasChanged(hashCode())
+          || startPositionIndex.hasChanged(hashCode())) {
+
+        setStartingPose();
+      }
+    }
+  }
+
+  /**
+   * Set the starting pose of the robot based on position index. This should be called only when
+   * robot is disabled.
+   */
+  public void setStartingPose() {
+    // Set starting position only if operating robot in field-relative control.
+    // Otherwise, robot starts at 0, 0, 0.
+    if (!Constants.driveRobotRelative) {
+      Pose2d startPosition0 =
+          new Pose2d(
+              startX0.get(), startY0.get(), new Rotation2d(Math.toRadians(startTheta0.get())));
+      Pose2d startPosition1 =
+          new Pose2d(
+              startX1.get(), startY1.get(), new Rotation2d(Math.toRadians(startTheta1.get())));
+
+      drive.setPose(
+          startPositionIndex.get() == 0
+              ? AllianceFlipUtil.apply(startPosition0)
+              : AllianceFlipUtil.apply(startPosition1));
+    }
   }
 
   /**
@@ -227,7 +274,8 @@ public class RobotContainer {
             drive,
             () -> -driveController.getLeftY() * Constants.DriveConstants.lowGearScaler,
             () -> -driveController.getLeftX() * Constants.DriveConstants.lowGearScaler,
-            () -> -driveController.getRightX() * 0.7));
+            () -> -driveController.getRightX() * 0.7,
+            Constants.driveRobotRelative));
     driveController.start().onTrue(new InstantCommand(() -> drive.resetFieldHeading()));
     driveController
         .leftTrigger(0.9)
@@ -236,7 +284,8 @@ public class RobotContainer {
                 drive,
                 () -> -driveController.getLeftY(),
                 () -> -driveController.getLeftX(),
-                () -> -driveController.getRightX()));
+                () -> -driveController.getRightX(),
+                Constants.driveRobotRelative));
 
     driveController
         .a()
@@ -279,7 +328,7 @@ public class RobotContainer {
 
     // intake/outtake
     driveController.rightTrigger().whileTrue(intake.runEatCommand());
-    operatorController.leftTrigger().whileTrue(intake.runVomitCommand());
+    operatorController.povUp().whileTrue(intake.runVomitCommand());
     operatorController.rightTrigger().whileTrue(intake.runPoopCommand());
 
     // Arm Controls
@@ -287,31 +336,19 @@ public class RobotContainer {
     new Trigger(() -> Math.abs(operatorController.getRightY()) >= Constants.JOYSTICK_DEADBAND)
         .whileTrue(new ArmManuel(arm, () -> -operatorController.getRightY()));
 
-    operatorController.a().onTrue(new ArmSetTargetPos(arm, ArmConstants.armIntakePosDeg));
     operatorController.b().onTrue(new ArmSetTargetPos(arm, ArmConstants.armDrivePosDeg));
     operatorController.x().onTrue(new ArmSetTargetPos(arm, ArmConstants.armTrapPosDeg));
     operatorController.y().onTrue(new ArmSetTargetPos(arm, ArmConstants.armAmpPosDeg));
 
-    operatorController.back().onTrue(new ArmExtend(arm));
-    operatorController.start().onTrue(new ArmRetract(arm));
+    // testing, TODO get rid of these
+    operatorController.povUp().onTrue(new InstantCommand(() -> outtake.setSpeaker()));
+    operatorController.povUp().onFalse(new InstantCommand(() -> outtake.stop()));
 
-    // TEMPORARY!!! FOR TESTING. TODO: REMOVE THIS!!!
-    climb.setDefaultCommand(
-        new ClimbManual(
-            climb,
-            () ->
-                MathUtil.applyDeadband(
-                    -operatorController.getLeftY() * 1.0 // input is voltage so 12 is maximum power
-                    ,
-                    Constants.JOYSTICK_DEADBAND)));
-
-    operatorController.start().onTrue(new ArmExtend(arm));
-    operatorController.back().onTrue(new ArmRetract(arm));
+    operatorController.povDown().onTrue(new InstantCommand(() -> outtake.setAmp()));
+    operatorController.povDown().onFalse(new InstantCommand(() -> outtake.stop()));
   }
 
   /**
-   * Use this to pass the autonomous command to the main {@link Robot} class.
-   *
    * @return the command to run in autonomous
    */
   public Command getAutonomousCommand() {
@@ -324,18 +361,21 @@ public class RobotContainer {
         "Drive FF Characterization",
         new FeedForwardCharacterization(
             drive, drive::runCharacterizationVolts, drive::getCharacterizationVelocity));
-    autoChooser.addOption(
-        "Flywheel FF Characterization",
-        new FeedForwardCharacterization(
-            exampleFlywheel,
-            exampleFlywheel::runVolts,
-            exampleFlywheel::getCharacterizationVelocity));
 
     autoChooser.addOption(
         "Module Drive Ramp Test",
         new VoltageCommandRamp(drive, drive::runDriveCommandRampVolts, 0.5, 5.0));
+
     autoChooser.addOption(
         "Module Turn Ramp Test",
         new VoltageCommandRamp(drive, drive::runTurnCommandRampVolts, 0.5, 5.0));
+
+    autoChooser.addOption(
+        "Outtake Ramp Test", new VoltageCommandRamp(outtake, outtake::setVoltage, 0.5, 5.0));
+
+    autoChooser.addOption(
+        "Spline Test",
+        autoCommands.splineToPose(
+            new Pose2d(new Translation2d(7.5, 3.5), new Rotation2d(Math.PI / 2))));
   }
 }

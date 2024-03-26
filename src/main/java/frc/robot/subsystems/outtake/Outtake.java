@@ -5,9 +5,11 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.OuttakeConstants;
 import frc.robot.util.LoggedTunableNumber;
+import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
 
 public class Outtake extends SubsystemBase {
+  private double setpoint;
   private OuttakeIO io;
   private final OuttakeIOInputsAutoLogged inputs = new OuttakeIOInputsAutoLogged();
 
@@ -33,8 +35,8 @@ public class Outtake extends SubsystemBase {
 
   // initialize tunable values
   static {
-    ampVelocity.initDefault(0.0);
-    speakerVelocity.initDefault(0.0);
+    ampVelocity.initDefault(200.0);
+    speakerVelocity.initDefault(1000.0);
     trapVelocity.initDefault(0.0);
     kP.initDefault(OuttakeConstants.kP);
     kD.initDefault(OuttakeConstants.kD);
@@ -48,7 +50,7 @@ public class Outtake extends SubsystemBase {
 
   @Override
   public void periodic() {
-    double setpoint = 0.0;
+    setpoint = 0.0;
     io.updateInputs(inputs);
     Logger.processInputs("Outtake", inputs);
 
@@ -97,5 +99,14 @@ public class Outtake extends SubsystemBase {
 
   public void stop() {
     mode = OuttakeMode.kStopped;
+  }
+
+  public void setVoltage(double voltage) {
+    io.setVoltage(voltage);
+  }
+
+  @AutoLogOutput
+  public double getTargetVelocity() {
+    return setpoint;
   }
 }

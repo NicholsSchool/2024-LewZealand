@@ -9,15 +9,11 @@ import com.revrobotics.CANSparkLowLevel.MotorType;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.SparkAbsoluteEncoder.Type;
 import edu.wpi.first.math.util.Units;
-import edu.wpi.first.wpilibj.PneumaticsModuleType;
-import edu.wpi.first.wpilibj.Solenoid;
 
 public class ArmIOReal implements ArmIO {
   private CANSparkMax leader;
   private CANSparkMax follower;
   private AbsoluteEncoder armEncoder;
-
-  private Solenoid piston;
 
   public ArmIOReal() {
     System.out.println("[Init] Creating ArmIOReal");
@@ -38,11 +34,7 @@ public class ArmIOReal implements ArmIO {
     follower.restoreFactoryDefaults();
     follower.setIdleMode(IdleMode.kBrake);
     follower.setSmartCurrentLimit(ARM_CURRENT_LIMIT);
-    // follower.follow(leader);
-    // follower.setControlFramePeriodMs(20);
     follower.burnFlash();
-
-    piston = new Solenoid(PneumaticsModuleType.CTREPCM, ARM_SOLENOID_CHANNEL);
   }
 
   /** Updates the set of loggable inputs. */
@@ -59,7 +51,6 @@ public class ArmIOReal implements ArmIO {
           inputs.busVoltage[1] * inputs.appliedOutput[1]
         };
     inputs.currentAmps = new double[] {leader.getOutputCurrent(), follower.getOutputCurrent()};
-    inputs.isExtended = piston.get();
   }
 
   private double checkRangeRadians(double angle) {
@@ -74,17 +65,5 @@ public class ArmIOReal implements ArmIO {
   public void setVoltage(double voltage) {
     leader.setVoltage(voltage);
     follower.setVoltage(voltage);
-  }
-
-  /** Retracts Pistons */
-  @Override
-  public void retract() {
-    piston.set(false); // TODO: confirm
-  }
-
-  /** Extends Pistons */
-  @Override
-  public void extend() {
-    piston.set(true); // TODO: confirm
   }
 }

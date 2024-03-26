@@ -21,4 +21,6 @@ public interface OuttakeIO {
 
   /** Set the direction on the morors. */
   public void setDirection(boolean forward);
+
+  public void stop();
 }
