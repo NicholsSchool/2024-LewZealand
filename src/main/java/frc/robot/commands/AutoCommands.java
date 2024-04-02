@@ -134,9 +134,10 @@ public class AutoCommands {
             () ->
                 autoDelaySeconds
                     .get()), // wait for tunable amount of time to allow alliance members to move
-        DriveToAmplifierWithFudge(drive), // drive to amp scoring position
+        DriveToAmplifierWithFudge(drive).withTimeout(2), // drive to amp scoring position
         waitSeconds(1), // wait?? not sure why.
-        new ArmGoToPosAuto(arm, ArmConstants.armAmpPosDeg), // arm at amp score position
+        // new ArmGoToPosAuto(arm, ArmConstants.armAmpPosDeg).withTimeout(2), // arm at amp score
+        // position
         new ParallelCommandGroup(
             outtake.runAmpCommand(),
             intake.runDigestCommand())); // run intake and outtake at same time to score
@@ -144,11 +145,11 @@ public class AutoCommands {
 
   public Command scoreAmpFieldAndCross() {
     var crossLineCommand =
-        driveToPose(
+        splineToPose(
                 new Pose2d(
                     FieldConstants.StagingLocations.spikeTranslations[2],
-                    new Rotation2d(Math.toRadians(-45.0))))
-            .withTimeout(4.0);
+                    new Rotation2d(Math.toRadians(0))))
+            .withTimeout(3.0);
 
     // 1) drive to the amp while raising the arm.
     // 2) stuff note into amp

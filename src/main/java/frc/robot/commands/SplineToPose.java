@@ -81,10 +81,10 @@ public class SplineToPose extends Command {
       case ROBOT_REAL:
       case ROBOT_REPLAY:
       case ROBOT_SIM:
-        splineKp.initDefault(2.0);
+        splineKp.initDefault(5.0);
         splineKd.initDefault(0.0);
         splineThetaKp.initDefault(2.0);
-        splineThetaKd.initDefault(0.0);
+        splineThetaKd.initDefault(1.0);
         splineMaxVelocity.initDefault(Units.inchesToMeters(150.0));
         splineMaxVelocitySlow.initDefault(Units.inchesToMeters(50.0));
         splineMaxAcceleration.initDefault(Units.inchesToMeters(95.0));
