@@ -129,7 +129,8 @@ public class AutoCommands {
     // 1) drive to the amp while raising the arm.
     // 2) stuff note into amp
     return new SequentialCommandGroup(
-        new ArmGoToPosAuto(arm, ArmConstants.armStartPosDeg), // raise arm release brake.
+        new ArmGoToPosAuto(arm, ArmConstants.armStartPosDeg)
+            .withTimeout(2), // raise arm release brake.
         new WaitCommandTunable(
             () ->
                 autoDelaySeconds
@@ -137,7 +138,7 @@ public class AutoCommands {
         DriveToAmplifierWithFudge(drive).withTimeout(2), // drive to amp scoring position
         waitSeconds(1), // wait?? not sure why.
         // new ArmGoToPosAuto(arm, ArmConstants.armAmpPosDeg).withTimeout(2), // arm at amp score
-        // position
+        // positions
         new ParallelCommandGroup(
             outtake.runAmpCommand(),
             intake.runDigestCommand())); // run intake and outtake at same time to score
@@ -145,10 +146,10 @@ public class AutoCommands {
 
   public Command scoreAmpFieldAndCross() {
     var crossLineCommand =
-        splineToPose(
+        driveToPose(
                 new Pose2d(
                     FieldConstants.StagingLocations.spikeTranslations[2],
-                    new Rotation2d(Math.toRadians(0))))
+                    new Rotation2d(Math.toRadians(135 - 180))))
             .withTimeout(3.0);
 
     // 1) drive to the amp while raising the arm.
@@ -166,7 +167,7 @@ public class AutoCommands {
                 new Pose2d(
                     FieldConstants.StagingLocations.spikeTranslations[2],
                     new Rotation2d(Math.toRadians(-45.0))))
-            .withTimeout(4.0);
+            .withTimeout(3.0);
 
     // 1) drive to the amp while raising the arm.
     // 2) stuff note into amp
