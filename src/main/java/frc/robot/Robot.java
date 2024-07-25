@@ -109,7 +109,7 @@ public class Robot extends LoggedRobot {
     robotContainer.setStartingPose();
 
     if (Constants.getRobot() == RobotType.ROBOT_REAL) {
-      robotContainer.armLock.set(true);
+      // robotContainer.armLock.set(true);
     }
 
     autonomousCommand = robotContainer.getAutonomousCommand();
@@ -128,7 +128,7 @@ public class Robot extends LoggedRobot {
   @Override
   public void teleopInit() {
     if (Constants.getRobot() == RobotType.ROBOT_REAL) {
-      robotContainer.armLock.set(true);
+      // robotContainer.armLock.set(true);
     }
 
     // This makes sure that the autonomous stops running when
