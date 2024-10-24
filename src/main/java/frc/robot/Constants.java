@@ -23,6 +23,7 @@ public final class Constants {
   public static final double KgPerLb = 0.453592;
 
   public static final double JOYSTICK_DEADBAND = 0.05;
+  public static final String ClimbConstants = null;
 
   public static RobotType getRobot() {
     return RobotBase.isReal() ? robot : RobotType.ROBOT_SIM;

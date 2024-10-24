@@ -1,6 +1,7 @@
 package frc.robot;
 
 import com.pathplanner.lib.auto.AutoBuilder;
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -31,9 +32,13 @@ import frc.robot.commands.VoltageCommandRamp;
 import frc.robot.commands.arm_commands.ArmGoToPosTeleop;
 import frc.robot.commands.arm_commands.ArmManuel;
 import frc.robot.commands.arm_commands.ArmSetTargetPos;
+import frc.robot.commands.climb_commands.ClimbManual;
 import frc.robot.subsystems.arm.Arm;
 import frc.robot.subsystems.arm.ArmIOReal;
 import frc.robot.subsystems.arm.ArmIOSim;
+import frc.robot.subsystems.climb.Climb;
+import frc.robot.subsystems.climb.ClimbIOReal;
+import frc.robot.subsystems.climb.ClimbIOSim;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.GyroIO;
 import frc.robot.subsystems.drive.GyroIONAVX;
@@ -62,6 +67,7 @@ public class RobotContainer {
   private final Arm arm;
   private final Intake intake;
   private final Outtake outtake;
+  private final Climb climb;
 
   // public final Solenoid armLock;
   private PowerDistribution pdh;
@@ -96,7 +102,8 @@ public class RobotContainer {
   public static final LoggedTunableNumber startTheta1 =
       new LoggedTunableNumber("Start Theta1(deg)", 0.0);
 
-  public static final LoggedTunableNumber revTimeSeconds = new LoggedTunableNumber("RevTimeDeliver (PovUp)", 1.5);
+  public static final LoggedTunableNumber revTimeSeconds =
+      new LoggedTunableNumber("RevTimeDeliver (PovUp)", 1.5);
 
   // Auto Commands
   private final AutoCommands autoCommands;
@@ -122,6 +129,7 @@ public class RobotContainer {
         arm = new Arm(new ArmIOReal());
         intake = new Intake(new IntakeIOReal());
         outtake = new Outtake(new OuttakeIOReal());
+        climb = new Climb(new ClimbIOReal());
         break;
 
       case ROBOT_SIM:
@@ -137,6 +145,7 @@ public class RobotContainer {
         arm = new Arm(new ArmIOSim());
         intake = new Intake(new IntakeIOSim());
         outtake = new Outtake(new OuttakeIOSim());
+        climb = new Climb(new ClimbIOSim());
         break;
 
       case ROBOT_FOOTBALL:
@@ -151,6 +160,7 @@ public class RobotContainer {
         arm = new Arm(new ArmIOSim());
         intake = new Intake(new IntakeIOSim());
         outtake = new Outtake(new OuttakeIOSim());
+        climb = new Climb(new ClimbIOSim());
         break;
 
       default:
@@ -169,6 +179,7 @@ public class RobotContainer {
         arm = new Arm(new ArmIOSim());
         intake = new Intake(new IntakeIOSim());
         outtake = new Outtake(new OuttakeIOSim());
+        climb = new Climb(new ClimbIOSim());
         break;
     }
 
@@ -338,6 +349,14 @@ public class RobotContainer {
     new Trigger(() -> Math.abs(operatorController.getRightY()) >= Constants.JOYSTICK_DEADBAND)
         .whileTrue(new ArmManuel(arm, () -> -operatorController.getRightY()));
 
+    // TEMPORARY!!! FOR TESTING. TODO: REMOVE THIS!!!
+    climb.setDefaultCommand(
+        new ClimbManual(
+            climb,
+            () ->
+                MathUtil.applyDeadband(
+                    -operatorController.getLeftY() * 1, Constants.JOYSTICK_DEADBAND)));
+
     operatorController.a().onTrue(new ArmSetTargetPos(arm, ArmConstants.armIntakePosDeg));
     operatorController.b().onTrue(new ArmSetTargetPos(arm, ArmConstants.armDrivePosDeg));
     operatorController.x().onTrue(new ArmSetTargetPos(arm, ArmConstants.armTrapPosDeg));
@@ -358,8 +377,9 @@ public class RobotContainer {
         .whileTrue(
             new ParallelCommandGroup(
                 outtake.run(() -> outtake.setDeliver()),
-                new SequentialCommandGroup(new WaitCommand(revTimeSeconds.get()), intake.run(() -> intake.poop())))); 
-                //TODO: make this a command and take away the logged tunable when you get home @Brady
+                new SequentialCommandGroup(
+                    new WaitCommand(revTimeSeconds.get()), intake.run(() -> intake.poop()))));
+    // TODO: make this a command and take away the logged tunable when you get home @Brady
 
     // pull note through intake and amp outtake (lower speed)
     // This is an example of running a command where the timing is handled by the lower level
