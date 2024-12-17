@@ -61,8 +61,13 @@ public class Climb extends SubsystemBase {
 
   public void setVoltage(double voltage) {
     voltageCommand = voltage;
-    io.setVoltageLeft(voltage);
-    io.setVoltageRight(voltage);
+    if ((inputs.leftPositionRads > 33.3 && voltageCommand > 0)
+        || (inputs.leftPositionRads < -1.0 && voltageCommand < 0)) io.setVoltageLeft(0.0);
+    else io.setVoltageLeft(voltage);
+
+    if ((inputs.rightPositionRads > 33.3 && voltageCommand > 0)
+        || (inputs.rightPositionRads < -1.0 && voltageCommand < 0)) io.setVoltageRight(0.0);
+    else io.setVoltageRight(voltage);
   }
 
   @AutoLogOutput

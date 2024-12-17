@@ -28,6 +28,7 @@ public class ClimbIOReal implements ClimbIO {
     leftClimb.setSmartCurrentLimit(35); // amps
     leftClimbEncoder.setPositionConversionFactor(2 * Math.PI / 25.0);
     leftClimbEncoder.setVelocityConversionFactor(2 * Math.PI / 25.0);
+    leftClimbEncoder.setPosition(0.0);
     leftClimb.burnFlash();
 
     rightClimb.setIdleMode(IdleMode.kBrake);
@@ -35,6 +36,7 @@ public class ClimbIOReal implements ClimbIO {
     rightClimb.setSmartCurrentLimit(35); // amps
     rightClimbEncoder.setPositionConversionFactor(2 * Math.PI / 25.0);
     rightClimbEncoder.setVelocityConversionFactor(2 * Math.PI / 25.0);
+    rightClimbEncoder.setPosition(0.0);
     rightClimb.burnFlash();
   }
 

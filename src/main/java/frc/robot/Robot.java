@@ -1,6 +1,5 @@
 package frc.robot;
 
-import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.Constants.RobotType;
@@ -27,7 +26,6 @@ public class Robot extends LoggedRobot {
    */
   @Override
   public void robotInit() {
-    CameraServer.startAutomaticCapture();
 
     // Record metadata
     Logger.recordMetadata("ProjectName", BuildConstants.MAVEN_NAME);

@@ -12,7 +12,6 @@ import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -34,22 +33,19 @@ import frc.robot.commands.arm_commands.ArmManuel;
 import frc.robot.commands.arm_commands.ArmSetTargetPos;
 import frc.robot.commands.climb_commands.ClimbManual;
 import frc.robot.subsystems.arm.Arm;
-import frc.robot.subsystems.arm.ArmIOReal;
 import frc.robot.subsystems.arm.ArmIOSim;
 import frc.robot.subsystems.climb.Climb;
-import frc.robot.subsystems.climb.ClimbIOReal;
 import frc.robot.subsystems.climb.ClimbIOSim;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.GyroIO;
-import frc.robot.subsystems.drive.GyroIONAVX;
 import frc.robot.subsystems.drive.ModuleIO;
-import frc.robot.subsystems.drive.ModuleIOMaxSwerve;
 import frc.robot.subsystems.drive.ModuleIOSim;
+import frc.robot.subsystems.elevator.EleavtorIOReal;
+import frc.robot.subsystems.elevator.Elevator;
+import frc.robot.subsystems.elevator.ElevatorIOSim;
 import frc.robot.subsystems.intake.Intake;
-import frc.robot.subsystems.intake.IntakeIOReal;
 import frc.robot.subsystems.intake.IntakeIOSim;
 import frc.robot.subsystems.outtake.Outtake;
-import frc.robot.subsystems.outtake.OuttakeIOReal;
 import frc.robot.subsystems.outtake.OuttakeIOSim;
 import frc.robot.util.AllianceFlipUtil;
 import frc.robot.util.LoggedTunableNumber;
@@ -68,6 +64,8 @@ public class RobotContainer {
   private final Intake intake;
   private final Outtake outtake;
   private final Climb climb;
+
+  private final Elevator elevator;
 
   // public final Solenoid armLock;
   private PowerDistribution pdh;
@@ -121,15 +119,17 @@ public class RobotContainer {
 
         drive =
             new Drive(
-                new GyroIONAVX(),
-                new ModuleIOMaxSwerve(0),
-                new ModuleIOMaxSwerve(1),
-                new ModuleIOMaxSwerve(2),
-                new ModuleIOMaxSwerve(3));
-        arm = new Arm(new ArmIOReal());
-        intake = new Intake(new IntakeIOReal());
-        outtake = new Outtake(new OuttakeIOReal());
-        climb = new Climb(new ClimbIOReal());
+                new GyroIO() {},
+                new ModuleIOSim(),
+                new ModuleIOSim(),
+                new ModuleIOSim(),
+                new ModuleIOSim());
+        arm = new Arm(new ArmIOSim());
+        intake = new Intake(new IntakeIOSim());
+        outtake = new Outtake(new OuttakeIOSim());
+        climb = new Climb(new ClimbIOSim());
+
+        elevator = new Elevator(new EleavtorIOReal());
         break;
 
       case ROBOT_SIM:
@@ -146,6 +146,8 @@ public class RobotContainer {
         intake = new Intake(new IntakeIOSim());
         outtake = new Outtake(new OuttakeIOSim());
         climb = new Climb(new ClimbIOSim());
+
+        elevator = new Elevator(new ElevatorIOSim());
         break;
 
       case ROBOT_FOOTBALL:
@@ -161,6 +163,8 @@ public class RobotContainer {
         intake = new Intake(new IntakeIOSim());
         outtake = new Outtake(new OuttakeIOSim());
         climb = new Climb(new ClimbIOSim());
+
+        elevator = new Elevator(new ElevatorIOSim());
         break;
 
       default:
@@ -180,6 +184,8 @@ public class RobotContainer {
         intake = new Intake(new IntakeIOSim());
         outtake = new Outtake(new OuttakeIOSim());
         climb = new Climb(new ClimbIOSim());
+
+        elevator = new Elevator(new ElevatorIOSim());
         break;
     }
 
@@ -213,14 +219,9 @@ public class RobotContainer {
 
   private void initShuffleboard() {
     // Configure the Shuffleboard
-    lewZealandTab = Shuffleboard.getTab("Lew Zealand");
-    hasNote = lewZealandTab.add("Has Note", false).getEntry();
-    isCurrnetProblem = lewZealandTab.add("Current Problem", false).getEntry();
   }
 
   public void updateShuffleboard() {
-    hasNote.setBoolean(intake.hasNote());
-    isCurrnetProblem.setBoolean(!arm.isCurrnetProblem());
 
     if (Constants.getRobot() == RobotType.ROBOT_REAL) {
       SmartDashboard.putNumber("PDH/Voltage", pdh.getVoltage());
@@ -343,6 +344,12 @@ public class RobotContainer {
                 () -> -90,
                 () -> drive.getYaw(),
                 () -> Constants.driveRobotRelative));
+
+    elevator.setDefaultCommand(
+        new InstantCommand(
+            () ->
+                elevator.setVoltage(
+                    driveController.getLeftTriggerAxis() - driveController.getRightTriggerAxis())));
 
     // Arm Controls
     arm.setDefaultCommand(new ArmGoToPosTeleop(arm));
